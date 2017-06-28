@@ -169,9 +169,9 @@ OverlayFS (module ``overlay``) or AuFS (module ``aufs`` and Debian package
 ``aufs-tools``).
 
 You need to enable IPv4 and IPv6 forwarding to allow the host to route traffic
-between VMs.  You also need to allow more entries in the ARP and NDP tables,
+between VMs. You also need to allow more entries in the ARP and NDP tables,
 and more inotify instances are probably needed (the values below are ok for
-some 500 containers):
+up to around 500 containers):
 
     # cat > /etc/sysctl.d/local-ceno2sim.conf << EOF
     net.ipv4.conf.all.forwarding = 1
