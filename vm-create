@@ -1,0 +1,92 @@
+#!/bin/sh
+# Create a VM (censor or node) in a given group and with a given number.
+
+set -e
+
+
+progname=$(basename "$0")
+
+error() {
+    echo "$progname: $1" >&2
+    exit 1
+}
+
+usage() {
+    echo "Usage: $progname c|e0|e1|w0|w1 NUMBER" >&2
+    echo "Create a VM in the given group with the given NUMBER." >&2
+    exit 1
+}
+
+
+# Parse and check arguments.
+if [ $# -ne 2 ]; then
+    usage
+fi
+
+# Check VM group.
+case "$1" in
+    (c) VM_GROUP=CENSOR ;;
+    (e0) VM_GROUP=NODE_E0 ;;
+    (e1) VM_GROUP=NODE_E1 ;;
+    (w0) VM_GROUP=NODE_W0 ;;
+    (w1) VM_GROUP=NODE_W1 ;;
+    (*) error "invalid group: $1"
+esac
+
+# Check VM identifier.
+if ! [ 1 -le "$2" -a "$2" -le 125 ]; then
+    error "NUMBER must be between 1 and 125: $2"
+fi
+VM_ID="$2"
+
+
+# Load configuration variables and common functions.
+. ./vars.sh
+. ./funcs.sh
+
+# Detect file system overlay mechanism.
+if [ "$SIM_OVERLAY_FS" = auto ]; then
+    if grep -q "\boverlay$" /proc/filesystems; then
+        SIM_OVERLAY_FS=overlayfs
+    elif grep -q "\baufs$" /proc/filesystems; then
+        SIM_OVERLAY_FS=aufs
+    else
+        error "no file system overlay mechanism detected"
+    fi
+fi
+
+# Compute VM name.
+vm_key=$(eval echo '$SIM_'$VM_GROUP'_KEY')
+VM_NAME="$SIM_NAME_PREFIX$vm_key$(printf '%02x' $VM_ID)"
+
+# Get template root.
+vm_type=${VM_GROUP%_*}
+VM_TEMPLATE_ROOT=$(eval echo '$SIM_'$vm_type'_TEMPLATE_ROOT')
+
+# Compute IPv4 addresses.
+ip4_offset=$(eval echo '$SIM_'$VM_GROUP'_IP4_OFFSET')
+splitted_ip4_net=$(split_ip4_net $SIM_IP4_BASE_NET)
+ip4_net_head=$(echo "$splitted_ip4_net" | cut -f1 -d' ')
+ip4_net_netid=$(echo "$splitted_ip4_net" | cut -f2 -d' ')
+VM_IP4_ADDR="$ip4_net_head.$((ip4_net_netid+ip4_offset)).$VM_ID.1"
+VM_IP4_HOST_ADDR="$ip4_net_head.$((ip4_net_netid+ip4_offset)).$VM_ID.0"
+
+# Compute IPv6 addresses.
+ip6_offset=$(eval echo '$SIM_'$VM_GROUP'_IP6_OFFSET')
+VM_IP6_ADDR="$SIM_IP6_BASE_NET$(printf '%04x' $((ip6_offset+VM_ID))):1"
+VM_IP6_HOST_ADDR="$SIM_IP6_BASE_NET$(printf '%04x' $((ip6_offset+VM_ID))):0"
+
+# Set a reasonable umask to avoid odd issues with permissions.
+umask 0022
+
+# Create VM directory and VM-specific config files.
+vm_dir="$SIM_LXC_DIR/$VM_NAME"
+mkdir -p "$vm_dir/rootfs" "$vm_dir/rootfs-rw/etc"
+echo $VM_NAME > "$vm_dir/rootfs-rw/etc/hostname"
+
+# Replace ``{{VARIABLE}}`` with the value of ``$VM_VARIABLE``
+# in the template config file to get the VM config file.
+# Commented options are uncommented if they have a value.
+eval sed $(set | sed -Ene 's/^(SIM|VM)_([_a-zA-Z0-9]+)=[^;]*/-e "s;{{\2}};$\1_\2;g"/p') \
+     -e 's/^##*\\s*\\\(lxc\\..*=\\s*\\S\\S*\\\)$/\\1/' \
+     -- lxc-config.in > "$vm_dir/config"

@@ -1,0 +1,30 @@
+#!/bin/sh
+# Create a testbed with a given number of censors and nodes.
+
+set -e
+
+
+progname=$(basename "$0")
+
+usage() {
+    echo "Usage: $progname NCENSORS NNODES" >&2
+    echo "Create a testbed with NCENSORS censors and NNODES nodes (per group)." >&2
+    exit 1
+}
+
+# Parse and check arguments.
+if [ $# -ne 2 ]; then
+    usage
+fi
+NCENSORS="$1"
+NNODES="$2"  # per group
+
+for id in $(seq "$NCENSORS"); do
+    ./vm-create c $group $id
+done
+
+for group in e0 e1 w0 w1; do
+    for id in $(seq "$NNODES"); do
+        ./vm-create $group $id
+    done
+done

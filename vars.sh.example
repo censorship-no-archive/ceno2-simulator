@@ -1,0 +1,61 @@
+# # System parameters
+
+# Directory of LXC containers.
+SIM_LXC_DIR=/var/lib/lxc
+# Mechanism for overlaying VM roots over templates.
+# Only ``overlayfs`` and ``aufs`` are supported,
+# set to ``auto`` to detect.
+SIM_OVERLAY_FS=auto
+
+
+# # VM parameters
+
+# Prefix of containers' names.
+SIM_NAME_PREFIX=vm
+# Names of VM templates.
+SIM_CENSOR_TEMPLATE_NAME=censor
+SIM_NODE_TEMPLATE_NAME=node
+# Root directories of VM templates.
+SIM_CENSOR_TEMPLATE_ROOT=$SIM_LXC_DIR/$SIM_CENSOR_TEMPLATE_NAME/rootfs
+SIM_NODE_TEMPLATE_ROOT=$SIM_LXC_DIR/$SIM_NODE_TEMPLATE_NAME/rootfs
+# Shared directory in he host for data and control.
+SIM_SHARED_HOST_DIR=$(realpath data)
+# The absolute mount point of that directory in VMs.
+SIM_SHARED_MP=/shared
+
+# Optional physical memory limit (e.g. "1G").
+# Please run ``lssubsys -m memory`` to test whether
+# the memory cgroup is mounted and usable.
+SIM_MEM=
+# Optional physical + swap memory limit (e.g. "2G").
+SIM_MEM_SWAP=
+
+
+# # Network parameters (no customization needed)
+
+# IPv4 and IPv6 base networks.
+SIM_IP4_BASE_NET=172.16.0.0
+SIM_IP4_BASE_LEN=13
+SIM_IP4_PREFIX_LEN=31
+SIM_IP6_BASE_NET=fddb:bd8c:1e4f::
+SIM_IP6_BASE_LEN=101
+SIM_IP6_PREFIX_LEN=127
+
+# For computing the final part of addresses.
+SIM_CENSOR_IP4_OFFSET=1
+SIM_CENSOR_IP6_OFFSET=$(printf %d 0xf0e0)
+SIM_NODE_E0_IP4_OFFSET=4
+SIM_NODE_E0_IP6_OFFSET=$(printf %d 0x0000)
+SIM_NODE_E1_IP4_OFFSET=5
+SIM_NODE_E1_IP6_OFFSET=$(printf %d 0x0100)
+SIM_NODE_W0_IP4_OFFSET=6
+SIM_NODE_W0_IP6_OFFSET=$(printf %d 0x0200)
+SIM_NODE_W1_IP4_OFFSET=7
+SIM_NODE_W1_IP6_OFFSET=$(printf %d 0x0300)
+
+# For computing VM name and inerface name.
+SIM_CENSOR_KEY=C
+SIM_NODE_E0_KEY=E0
+SIM_NODE_E1_KEY=E1
+SIM_NODE_W0_KEY=W0
+SIM_NODE_W1_KEY=W1

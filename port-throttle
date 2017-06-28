@@ -1,0 +1,78 @@
+#!/bin/sh
+# Throttle Western traffic from a port to a limited speed.
+#
+# It can be invoked several times for different ports,
+# but only the speed from the first invocation is used.
+#
+# Needs ``tcconfig``, tested with v0.8 and v0.9.
+
+set -e
+
+
+progname=$(basename "$0")
+
+usage() {
+    echo "Usage: $progname PORT RATE" >&2
+    echo "Throttle Western traffic from the given PORT entering Eastern hosts to the given RATE." >&2
+    echo "RATE is given as in tc, e.g. 1M, 1000.5Kbit, etc." >&2
+    exit 1
+}
+
+
+# Parse and check arguments.
+if [ $# -ne 2 ]; then
+    usage
+fi
+
+# Check port number.
+if ! [ 1 -le "$1" -a "$1" -le 65535 ]; then
+    error "PORT must be between 1 and 65535: $2"
+fi
+PORT=$1
+RATE=$2  # TODO: check
+
+
+. ./vars.sh
+. ./funcs.sh
+
+# Create and switch to a temporary directory to hold scripts.
+SCRIPT_DIR=$(mktemp -d)
+cd "$SCRIPT_DIR"
+
+# Use ``tcconfig`` to create the base scripts.
+e0_pfx="$SIM_NAME_PREFIX$SIM_NODE_E0_KEY"
+e1_pfx="$SIM_NAME_PREFIX$SIM_NODE_E1_KEY"
+splitted_ip4_net=$(split_ip4_net $SIM_IP4_BASE_NET)
+ip4_net_head=$(echo "$splitted_ip4_net" | cut -f1 -d' ')
+ip4_net_netid=$(echo "$splitted_ip4_net" | cut -f2 -d' ')
+ip4_net_tail=$(echo "$splitted_ip4_net" | cut -f3 -d' ')
+ip4_net_len=$((SIM_IP4_BASE_LEN+2))  # base len + censor/node bit + East/West bit
+ip4_net="$ip4_net_head.$((ip4_net_netid+SIM_NODE_W0_IP4_OFFSET)).$ip4_net_tail/$ip4_net_len"
+ip6_net_len=$((SIM_IP6_BASE_LEN+2))  # base len + censor/node bit + East/West bit
+ip6_net="$SIM_IP6_BASE_NET$(printf %04x $SIM_NODE_W0_IP6_OFFSET):0/$ip6_net_len"
+for vm in $(iter_vms); do
+    if expr "$vm" : "$e0_pfx" > /dev/null || expr "$vm" : "$e1_pfx" > /dev/null; then
+        # This creates ``tcset_$vm.sh``.  We regulate *outgoing* traffic since
+        # we want to regulate traffic entering the container, but
+        # the container is on the other side of the veth pair.
+        tcset --device "$vm" --net "$ip4_net" --port $PORT --rate "$RATE" --tc-script
+    fi
+done
+
+# Modify the scripts to match packets comming from the West, not going towards it.
+sed -Ei 's/^(tc filter .*)\bdst\b(.*)\bdport\b(.*)/\1src\2sport\3/' tcset_*.sh
+# Add classification for IPv6 traffic.
+for s in ./tcset_*.sh; do
+    grep '^tc filter ' "$s" \
+        | sed -e 's/prio 1/prio 2/' \
+              -e 's/protocol ip /protocol ipv6 /' -e 's/match ip /match ip6 /g' \
+              -e "s#$ip4_net#$ip6_net#" >> "$s"
+done
+
+# Apply the modified scripts.
+for s in ./tcset_*.sh; do
+    "$s"
+done
+
+cd
+rm -rf "$SCRIPT_DIR"

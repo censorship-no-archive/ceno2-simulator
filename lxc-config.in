@@ -1,0 +1,29 @@
+lxc.include = /usr/share/lxc/config/debian.common.conf
+
+lxc.utsname = {{NAME}}
+lxc.arch = amd64
+
+# Overlay this VM's changes over the base template.
+lxc.rootfs = {{OVERLAY_FS}}:{{TEMPLATE_ROOT}}:{{LXC_DIR}}/{{NAME}}/rootfs-rw
+lxc.rootfs.backend = {{OVERLAY_FS}}
+# Mount the shared directory.
+lxc.mount.entry={{SHARED_HOST_DIR}} {{LXC_DIR}}/{{NAME}}/rootfs{{SHARED_MP}} shared bind,nodev,noexec,nosuid 0 0
+
+# No virtual terminals are needed.
+lxc.tty = 0
+
+# A veth network pair with the host side not in any bridge,
+# configured with point-to-point IPv4 and IPv6 addresses.
+lxc.network.type = veth
+lxc.network.name = eth0
+lxc.network.veth.pair = {{NAME}}
+lxc.network.link =
+lxc.network.flags = up
+lxc.network.ipv4 = {{IP4_ADDR}}/{{IP4_PREFIX_LEN}}
+lxc.network.ipv4.gateway = {{IP4_HOST_ADDR}}
+lxc.network.ipv6 = {{IP6_ADDR}}/{{IP6_PREFIX_LEN}}
+lxc.network.ipv6.gateway = {{IP6_HOST_ADDR}}
+
+# Optional memory limits.
+#lxc.cgroup.memory.limit_in_bytes = {{MEM}}
+#lxc.cgroup.memory.memsw.limit_in_bytes = {{MEM_SWAP}}

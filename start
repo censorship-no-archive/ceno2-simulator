@@ -1,0 +1,26 @@
+#!/bin/sh
+# Start the testbed.
+
+set -e
+
+. ./vars.sh
+. ./funcs.sh
+
+# VM_NAME LXC_OPTION -> LXC_OPTION_VALUE
+get_conf() {
+    # ``lxc-info`` does not seem to be able to retrieve all config options properly.
+    sed -n "s/^$2 = \(.*\)/\1/p" "$SIM_LXC_DIR/$1/config"
+}
+
+for vm in $(iter_vms); do
+    vm_veth=$(get_conf "$vm" lxc.network.veth.pair)
+    vm_ip4=$(get_conf "$vm" lxc.network.ipv4)
+    vm_ip4_host=$(get_conf "$vm" lxc.network.ipv4.gateway)
+    vm_ip6=$(get_conf "$vm" lxc.network.ipv6)
+    vm_ip6_host=$(get_conf "$vm" lxc.network.ipv6.gateway)
+
+    lxc-start -P "$SIM_LXC_DIR" -n "$vm"
+    lxc-wait -P "$SIM_LXC_DIR" -n "$vm" -s RUNNING
+    ip addr add "$vm_ip4_host" peer "$vm_ip4" dev "$vm_veth"
+    ip addr add "$vm_ip6_host" peer "$vm_ip6" dev "$vm_veth"
+done

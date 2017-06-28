@@ -1,0 +1,9 @@
+#!/bin/sh
+# Destroy the (already stopped) testbed.
+
+. ./vars.sh
+. ./funcs.sh
+
+for vm in $(iter_vms); do
+    lxc-destroy -P "$SIM_LXC_DIR" -n "$vm"
+done

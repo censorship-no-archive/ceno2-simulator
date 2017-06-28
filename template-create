@@ -1,0 +1,53 @@
+#!/bin/sh
+# Create a container with a given name and prepare it as a template.
+
+set -e
+
+
+progname=$(basename "$0")
+
+usage() {
+    echo "Usage: $progname NAME" >&2
+    echo "Create a container with the given NAME and prepare it as a template." >&2
+    exit 1
+}
+
+# Parse and check arguments.
+if [ $# -ne 1 ]; then
+    usage
+fi
+VM_NAME="$1"
+
+
+# Load configuration variables.
+. ./vars.sh
+
+# Set a reasonable umask to avoid odd issues with permissions.
+umask 0022
+
+# Create the VM.
+lxc-create -P "$SIM_LXC_DIR" -n "$VM_NAME" -t debian
+VM_ROOT=$(lxc-info -P "$SIM_LXC_DIR" -n "$VM_NAME" -c lxc.rootfs | sed 's/.* = \(.*\)/\1/')
+
+# Disable services.
+for svc in console-getty getty@ ssh; do
+    ln -sf /dev/null "$VM_ROOT/etc/systemd/system/$svc.service"
+done
+
+# Shared data directory.
+mkdir -p "$VM_ROOT$SIM_SHARED_MP"
+
+# Add a dummy network interface to ease firing up the VM
+# and further configure it.
+VM_CONF=$(dirname "$VM_ROOT")/config
+cat >> "$VM_CONF" << 'EOF'
+lxc.network =
+lxc.network.type = veth
+lxc.network.name = eth0
+lxc.network.link = vmbr
+lxc.network.flags = up
+EOF
+
+# Disable network autoconfiguration.
+# If you boot the template, you will need to run ``dhclient eth0`` manually.
+sed -Ei 's/^(iface.*)\bdhcp\b(.*)/\1manual\2/' "$VM_ROOT/etc/network/interfaces"

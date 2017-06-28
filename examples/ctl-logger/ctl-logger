@@ -1,0 +1,25 @@
+#!/bin/sh
+# Log the contents of the control file to ``/shared/HOSTNAME/ctl.log``.
+#
+# This uses ``inotifywait`` from ``inotify-tools``.
+
+SHARED_DIR=/shared
+CTL_FILE=ctl
+LOG="$SHARED_DIR/$(hostname)/$CTL_FILE.log"
+
+log() {
+   echo "$(date -uIs) $1" >> "$LOG"
+}
+
+mkdir -p "$(dirname "$LOG")"
+log "START"
+
+while true; do
+    if f=$(inotifywait -q -e moved_to "$SHARED_DIR" | cut -f3 -d' '); then
+        if [ "$f" = "$CTL_FILE" ]; then  # the file was moved in
+            log "$(cat "$SHARED_DIR/$CTL_FILE")"
+        fi
+    else  # something went wrong, wait a little
+        sleep 1
+    fi
+done

@@ -1,0 +1,48 @@
+#!/bin/sh
+# Executes what we're told to with ipfs.
+#
+# This uses ``inotifywait`` from ``inotify-tools``. It also needs screen.
+
+SHARED_DIR=/shared
+CTL_FILE=ipfs
+MYSELF=$(hostname)
+LOG="$SHARED_DIR/$MYSELF/$CTL_FILE.log"
+
+log() {
+   echo "$(date -uIs) $1" >> "$LOG"
+}
+
+IPFS() {
+  su -l -c "export PATH+=:/usr/lib/go-1.7/bin:/home/ipfs/go/bin GOPATH=/home/ipfs/go; ipfs $1" ipfs
+}
+
+IPFS_screen(){
+  su -l -c "PATH+=:/usr/lib/go-1.7/bin:/home/ipfs/go/bin GOPATH=/home/ipfs/go screen -d -m ipfs $1" ipfs
+}
+
+mkdir -p "$(dirname "$LOG")"
+log "START"
+
+while true; do
+    if f=$(inotifywait -q --format %f -e moved_to "$SHARED_DIR"); then
+        if [ "$f" = "$CTL_FILE" -o "$f" = "${CTL_FILE}.${MYSELF}" ]; then
+          CUR_CTL_FILE=$f
+          CMD=$(head -n 1 "$SHARED_DIR/$CUR_CTL_FILE")
+          CMD_ID=$(echo -n "$(stat --format=%Y "$SHARED_DIR/$CUR_CTL_FILE")${CMD}"|sha1sum|cut -d' ' -f1)
+
+          # Initialise ipfs config if it does not exist
+          [ ! -d /home/ipfs/.ipfs ] && log "Initalising IPFS because no config present" && (IPFS init || log "Init failed")
+
+          # Start ipfs daemon if it is not running
+          pgrep -f "ipfs daemon" || (IPFS id && IPFS_screen daemon && sleep 10 && log "Started IPFS daemon in the background")
+
+          log "IPFS-EXEC START ${CMD_ID} $CMD"
+          OUTPUT=$(IPFS "$CMD")
+          log "IPFS-EXEC OUTPUT ${CMD_ID}
+$OUTPUT"
+          log "IPFS-EXEC DONE ${CMD_ID}"
+        fi
+    else  # something went wrong, wait a little
+        sleep 1
+    fi
+done

@@ -1,0 +1,10 @@
+#!/bin/sh
+# Stop the testbed.
+
+. ./vars.sh
+. ./funcs.sh
+
+for vm in $(iter_vms); do
+    lxc-stop -P "$SIM_LXC_DIR" -n "$vm" &
+done
+wait

@@ -1,0 +1,10 @@
+[Unit]
+Description=Control logger example experiment
+After=local-fs.target
+
+[Service]
+ExecStart=/usr/local/bin/ctl-logger
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
