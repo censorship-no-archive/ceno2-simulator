@@ -96,6 +96,7 @@ run() {
 }
 
 
+mkdir -p "$SHARED_PATH"
 node_role=$(get_node_role)
 
 # Create injector keys on boot if missing.
