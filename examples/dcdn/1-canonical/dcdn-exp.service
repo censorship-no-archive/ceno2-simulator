@@ -1,0 +1,10 @@
+[Unit]
+Description=dCDN canonical operation experiment
+After=network.target
+
+[Service]
+ExecStart=/shared/dcdn/1-canonical/dcdn-exp
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

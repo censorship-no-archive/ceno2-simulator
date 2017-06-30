@@ -1,0 +1,80 @@
+#!/bin/sh
+# dCDN canonical operation experiment.
+#
+# This uses ``inotifywait`` from ``inotify-tools``
+# and ``llvm-config`` from ``llvm``.
+
+SHARED_PATH=/shared/dcdn/1-canonical
+CTL_NAME=ctl
+CTL_PATH="$SHARED_PATH/$CTL_NAME"
+LOG_PATH="$SHARED_PATH/$(hostname).log"
+PID_PATH="$SHARED_PATH/$(hostname).pid"
+PATH="$(dirname "$SHARED_PATH")/bin":$PATH
+
+INJECTOR_PORT=7000
+
+# Enable more aggressive address sanitization checks.
+export ASAN_SYMBOLIZER_PATH="$(llvm-config --bindir)/llvm-symbolizer"
+export MSAN_SYMBOLIZER_PATH="$(llvm-config --bindir)/llvm-symbolizer"
+export ASAN_OPTIONS='strict_string_checks=1:detect_stack_use_after_return=1:check_initialization_order=1:strict_init_order=1'
+
+
+get_node_role() {
+    case "$(hostname)" in
+        (vmW001) echo injector ;;
+        (vmE001) echo client ;;
+        (*) echo UNKNOWN ;;
+    esac
+}
+
+log() {
+   echo "$(date -uIs) $1" >> "$LOG_PATH"
+}
+
+run_daemon() {  # in shared path, save PID
+    cd "$SHARED_PATH"
+    "$@" &
+    echo $! > "$PID_PATH"
+    cd -
+}
+
+run() {
+    local cmd="$1"
+
+    # Common commands.
+    log "$cmd"
+    test $node_role = UNKNOWN && return
+
+    case "$cmd" in
+        (NODE_STOP) kill "$(cat "$PID_PATH")" ;;
+    esac
+
+    # Injector commands.
+    test $node_role = injector && case "$cmd" in
+        (INJECTOR_START) run_daemon injector -n $INJECTOR_PORT ;;
+    esac
+
+    # Client commands.
+    test $node_role = client && case "$cmd" in
+        (CLIENT_START) run_daemon client -n ;;
+    esac
+}
+
+
+node_role=$(get_node_role)
+
+# Create injector keys on boot if missing.
+if [ $node_role = injector -a ! -f "$SHARED_PATH/injector_sk" ]; then
+    (cd "$SHARED_PATH" && keygen)
+fi
+
+# Main loop, wait for commands.
+while true; do
+    if f=$(inotifywait -q -e moved_to "$SHARED_PATH" | cut -f3 -d' '); then
+        if [ "$f" = "$CTL_NAME" ]; then  # the file was moved in
+            run "$(cat "$CTL_PATH")"
+        fi
+    else  # something went wrong, wait a little
+        sleep 1
+    fi
+done
