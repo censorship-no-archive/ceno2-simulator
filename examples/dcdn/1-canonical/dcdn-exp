@@ -51,7 +51,7 @@ run() {
 
     # Injector commands.
     test $node_role = injector && case "$cmd" in
-        (INJECTOR_START) run_daemon injector -n $INJECTOR_PORT ;;
+        (INJECTOR_START) run_daemon injector -p $INJECTOR_PORT ;;
     esac
 
     # Client commands.
