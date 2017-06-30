@@ -5,6 +5,8 @@
 # ``llvm-config`` from ``llvm`` for nodes,
 # ``curl`` for clients.
 
+##XXXX run in private directories (because of dht.dat)
+
 SHARED_PATH=/shared/dcdn/1-canonical
 CTL_NAME=ctl
 CTL_PATH="$SHARED_PATH/$CTL_NAME"
