@@ -8,7 +8,8 @@ SHARED_PATH=/shared/dcdn/1-canonical
 CTL_NAME=ctl
 CTL_PATH="$SHARED_PATH/$CTL_NAME"
 LOG_PATH="$SHARED_PATH/$(hostname).log"
-PID_PATH="$SHARED_PATH/$(hostname).pid"
+DAEMON_PID_PATH="$SHARED_PATH/$(hostname).daemon.pid"
+DAEMON_LOG_PATH="$SHARED_PATH/$(hostname).daemon.log"
 PATH="$(dirname "$SHARED_PATH")/bin":$PATH
 
 INJECTOR_PORT=7000
@@ -31,10 +32,10 @@ log() {
    echo "$(date -uIs) $1" >> "$LOG_PATH"
 }
 
-run_daemon() {  # in shared path, save PID
+run_daemon() {  # in shared path, save PID, log output
     cd "$SHARED_PATH"
-    "$@" &
-    echo $! > "$PID_PATH"
+    "$@" > "$DAEMON_LOG_PATH" 2>&1 &
+    echo $! > "$DAEMON_PID_PATH"
     cd -
 }
 
@@ -46,7 +47,7 @@ run() {
     test $node_role = UNKNOWN && return
 
     case "$cmd" in
-        (NODE_STOP) kill "$(cat "$PID_PATH")" ;;
+        (NODE_STOP) kill "$(cat "$DAEMON_PID_PATH")" ;;
     esac
 
     # Injector commands.
