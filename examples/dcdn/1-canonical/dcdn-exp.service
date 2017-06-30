@@ -3,7 +3,7 @@ Description=dCDN canonical operation experiment
 After=network.target
 
 [Service]
-ExecStart=/shared/dcdn/1-canonical/dcdn-exp
+ExecStart=/usr/local/sbin/dcdn-exp
 Restart=on-failure
 
 [Install]
