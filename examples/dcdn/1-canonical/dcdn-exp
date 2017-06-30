@@ -65,14 +65,14 @@ run() {
 
     # Common commands.
     log "$cmd"
-    test $node_role = UNKNOWN && return
+    test $NODE_ROLE = UNKNOWN && return
 
     case "$cmd" in
         (NODE_STOP) kill "$(cat "$DAEMON_PID_PATH")" ;;
     esac
 
     # Injector commands.
-    test $node_role = injector && case "$cmd" in
+    test $NODE_ROLE = injector && case "$cmd" in
         (INJECTOR_START)
             run_daemon injector -p $INJECTOR_PORT
             # Wait a limited time for the injector to announce.
@@ -85,7 +85,7 @@ run() {
     esac
 
     # Client commands.
-    test $node_role = client && case "$cmd" in
+    test $NODE_ROLE = client && case "$cmd" in
         (CLIENT_START) run_daemon client -n ;;
         (CLIENT_FETCH\ *)
             url=${cmd##* }
@@ -99,10 +99,10 @@ run() {
 
 
 mkdir -p "$SHARED_PATH"
-node_role=$(get_node_role)
+NODE_ROLE=$(get_node_role)
 
 # Create injector keys on boot if missing.
-if [ $node_role = injector -a ! -f "$SHARED_PATH/injector_sk" ]; then
+if [ $NODE_ROLE = injector -a ! -f "$SHARED_PATH/injector_sk" ]; then
     (cd "$SHARED_PATH" && keygen)
 fi
 
