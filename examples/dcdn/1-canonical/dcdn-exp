@@ -13,6 +13,7 @@ DAEMON_LOG_PATH="$SHARED_PATH/$(hostname).daemon.log"
 PATH="$(dirname "$SHARED_PATH")/bin":$PATH
 
 INJECTOR_PORT=7000
+INJECTOR_ANN_SECS=60
 
 # Enable more aggressive address sanitization checks.
 export ASAN_SYMBOLIZER_PATH="$(llvm-config --bindir)/llvm-symbolizer"
@@ -39,6 +40,21 @@ run_daemon() {  # in shared path, save PID, log output
     cd -
 }
 
+poll_for_text() {  # text, file path, timeout in seconds
+    local poll_period=5
+    local now=$(date +%s)
+    local limit=$((now + $3))
+
+    while [ $now -lt $limit ]; do
+        if grep -q "$1" "$2"; then
+            return 0
+        fi
+        sleep $poll_period
+        now=$(date +%s)
+    done
+    return 1
+}
+
 run() {
     local cmd="$1"
 
@@ -52,7 +68,15 @@ run() {
 
     # Injector commands.
     test $node_role = injector && case "$cmd" in
-        (INJECTOR_START) run_daemon injector -p $INJECTOR_PORT ;;
+        (INJECTOR_START)
+            run_daemon injector -p $INJECTOR_PORT
+            # Wait a limited time for the injector to announce.
+            if poll_for_text 'announce complete' "$DAEMON_LOG_PATH" $INJECTOR_ANN_SECS; then
+                log 'INJECTOR_START -> OK'
+            else
+                log 'INJECTOR_START -> FAILED'
+            fi
+            ;;
     esac
 
     # Client commands.
