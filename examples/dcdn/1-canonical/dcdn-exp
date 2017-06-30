@@ -92,7 +92,7 @@ run() {
             start=$(date +%s)
             http_code=$(curl -x localhost:$CLIENT_PORT "$url" -o /dev/null -w '%{http_code}' --silent --show-error)
             stop=$(date +%s)
-            log "CLIENT_URL -> HTTP $http_code $((stop-start))s"
+            log "CLIENT_FETCH -> HTTP $http_code $((stop-start))s"
             ;;
     esac
 }
