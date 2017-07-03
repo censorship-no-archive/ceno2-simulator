@@ -1,0 +1,20 @@
+#!/bin/sh
+# Atomically put the given command in the given control file.
+
+set -e
+
+progname=$(basename "$0")
+if [ $# -ne 2 ]; then
+    echo "Usage: $progname CONTROL_FILE COMMAND" >&2
+    exit 1
+fi
+
+control_old="$1"
+command="$2"
+
+# Write the command to a world-readable temporary file
+# and replace the control file with it.
+control_new=$(mktemp "$control_old.XXXX")
+chmod a+r "$control_new"
+echo "$command" > "$control_new"
+mv "$control_new" "$control_old"
