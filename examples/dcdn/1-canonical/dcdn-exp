@@ -5,8 +5,6 @@
 # ``llvm-config`` from ``llvm`` for nodes,
 # ``curl`` for clients.
 
-##XXXX run in private directories (because of dht.dat)
-
 SHARED_PATH=/shared/dcdn/1-canonical
 CTL_NAME=ctl
 CTL_PATH="$SHARED_PATH/$CTL_NAME"
@@ -37,10 +35,19 @@ log() {
    echo "$(date -uIs) $1" >> "$LOG_PATH"
 }
 
-run_daemon() {  # in shared path, save PID, log output
-    cd "$SHARED_PATH"
+run_daemon() {  # in temporary directory, save PID, log output
+    cd $(mktemp -d)
+
+    # Copy injector key stuff in the current directory,
+    # where the daemon expects it.
+    cp "$SHARED_PATH/injector_pk" .
+    if [ $NODE_ROLE = injector ]; then
+        cp "$SHARED_PATH/injector_sk" .
+    fi
+
     "$@" > "$DAEMON_LOG_PATH" 2>&1 &
     echo $! > "$DAEMON_PID_PATH"
+
     cd -
 }
 
