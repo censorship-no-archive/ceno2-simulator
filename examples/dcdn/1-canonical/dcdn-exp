@@ -46,9 +46,11 @@ run_daemon() {  # in temporary directory, save PID, log output
     fi
 
     "$@" > "$DAEMON_LOG_PATH" 2>&1 &
+    local ret=$?
     echo $! > "$DAEMON_PID_PATH"
 
     cd -
+    return $ret
 }
 
 poll_for_text() {  # text, file path, timeout in seconds
@@ -75,13 +77,22 @@ run() {
     test $NODE_ROLE = UNKNOWN && return
 
     case "$cmd" in
-        (NODE_STOP) kill "$(cat "$DAEMON_PID_PATH")" ;;
+        (NODE_STOP)
+            if kill "$(cat "$DAEMON_PID_PATH")"; then
+                log 'NODE_STOP -> OK'
+            else
+                log 'NODE_STOP -> FAILED'
+            fi
+            ;;
     esac
 
     # Injector commands.
     test $NODE_ROLE = injector && case "$cmd" in
         (INJECTOR_START)
-            run_daemon injector -p $INJECTOR_PORT
+            if ! run_daemon injector -p $INJECTOR_PORT; then
+                log 'INJECTOR_START -> FAILED'
+                return
+            fi
             # Wait a limited time for the injector to announce.
             if poll_for_text 'announce complete' "$DAEMON_LOG_PATH" $INJECTOR_ANN_SECS; then
                 log 'INJECTOR_START -> OK'
@@ -93,7 +104,13 @@ run() {
 
     # Client commands.
     test $NODE_ROLE = client && case "$cmd" in
-        (CLIENT_START) run_daemon client -n ;;
+        (CLIENT_START)
+            if run_daemon client -n; then
+                log 'CLIENT_START -> OK'
+            else
+                log 'CLIENT_START -> FAILED'
+            fi
+            ;;
         (CLIENT_FETCH\ *)
             url=${cmd##* }
             start=$(date +%s)
