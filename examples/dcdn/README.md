@@ -29,6 +29,8 @@ Stop the template.
 
 Example commands:
 
+    $ ./create 0 1
+    $ ./start
     $ alias ctl="/path/to/examples/ctl SHARED/dcdn/1-canonical/ctl"
     $ ctl INJECTOR_START
     (wait until "INJECTOR_START -> <RESULT>" appears in "vmW001.log")
@@ -36,3 +38,5 @@ Example commands:
     $ ctl "CLIENT_FETCH http://www.bbc.com/"
     (check "vmE001.log")
     $ ctl NODE_STOP
+    $ ./stop
+    $ ./destroy
