@@ -51,3 +51,9 @@ EOF
 # Disable network autoconfiguration.
 # If you boot the template, you will need to run ``dhclient eth0`` manually.
 sed -Ei 's/^(iface.*)\bdhcp\b(.*)/\1manual\2/' "$VM_ROOT/etc/network/interfaces"
+
+# Used the configured DNS servers (instead of the host's).
+echo "search testbed" > "$VM_ROOT/etc/resolv.conf"
+for srv in $SIM_NAME_SERVERS; do
+    echo "nameserver $srv" >> "$VM_ROOT/etc/resolv.conf"
+done

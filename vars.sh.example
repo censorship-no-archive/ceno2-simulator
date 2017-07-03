@@ -33,6 +33,9 @@ SIM_MEM_SWAP=
 
 # # Network parameters (no customization needed)
 
+# Default DNS servers (from Swiss Privacy Foundation).
+SIM_NAME_SERVERS='77.109.148.136 77.109.148.137'
+
 # IPv4 and IPv6 base networks.
 SIM_IP4_BASE_NET=172.16.0.0
 SIM_IP4_BASE_LEN=13
