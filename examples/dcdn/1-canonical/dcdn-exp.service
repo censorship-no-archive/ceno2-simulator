@@ -5,6 +5,8 @@ After=network.target
 [Service]
 ExecStart=/usr/local/sbin/dcdn-exp
 Restart=on-failure
+# Just to get a usable environment, a normal user would also do.
+User=root
 
 [Install]
 WantedBy=default.target
