@@ -4,7 +4,8 @@ Basic tests for [dCDN](https://github.com/clostra/dcdn/).
 
 ## Common host preparation
 
-Install the binaries to ``SHARED/dcdn/bin``.
+Install the binaries to ``SHARED/dcdn/bin``.  They must have been built with
+the same version of Debian used in experiment templates.
 
 ## Canonical operation test
 
